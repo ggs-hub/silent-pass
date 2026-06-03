@@ -56,7 +56,7 @@ jobs:
         run: |
           mkdir -p release
           cp app/build/outputs/apk/release/app-release.apk \
-            release/silent-call-${{ inputs.version }}.apk
+            release/silent-pass-${{ inputs.version }}.apk
 
       - name: Create and push tag
         run: |
@@ -75,7 +75,7 @@ jobs:
           RELEASE_NOTES: ${{ inputs.notes }}
         run: |
           if [ -z "$RELEASE_NOTES" ]; then
-            RELEASE_NOTES="SilentCall ${{ inputs.version }}"
+            RELEASE_NOTES="SilentPass ${{ inputs.version }}"
           fi
           printf "%s\n" "$RELEASE_NOTES" > release-notes.md
 
@@ -84,12 +84,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${{ inputs.version }}" \
-            release/silent-call-${{ inputs.version }}.apk \
+            release/silent-pass-${{ inputs.version }}.apk \
             --title "${{ inputs.title }} ${{ inputs.version }}" \
             --notes-file release-notes.md
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: silent-call-${{ inputs.version }}
+          name: silent-pass-${{ inputs.version }}
           path: release/*
