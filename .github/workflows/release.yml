@@ -10,7 +10,7 @@ on:
       title:
         description: "Release Title"
         required: true
-        default: "SilentCall"
+        default: "silent-pass"
         type: string
       notes:
         description: "Release Note"
