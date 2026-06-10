@@ -20,7 +20,7 @@ class ContactRingStore(context: Context) {
             .putStringSet(KEY_SELECTED_CONTACTS, contacts.map(::encodeContact).toSet())
             .putStringSet(KEY_ENABLED_LOOKUP_URIS, enabledContacts.map { it.lookupUri }.toSet())
             .putStringSet(KEY_ENABLED_NUMBERS, enabledContacts.flatMap { it.numbers }.toSet())
-            .apply()
+            .commit()  // 改用 commit() 替代 apply()，确保同步写入
     }
 
     fun shouldRingForNumber(rawNumber: String?): Boolean {
@@ -79,20 +79,50 @@ class ContactRingStore(context: Context) {
                 ?.trim()
                 ?.takeIf { it.isNotBlank() }
                 ?: return null
-            val stripped = PhoneNumberUtils.stripSeparators(number)
+            
+            // 移除各种分隔符和空格
+            var stripped = PhoneNumberUtils.stripSeparators(number)
                 .replace(" ", "")
                 .replace("-", "")
-            return stripped.filterIndexed { index, char ->
-                char.isDigit() || (index == 0 && char == '+')
-            }.takeIf { it.isNotBlank() }
+                .replace("(", "")
+                .replace(")", "")
+                .replace("[", "")
+                .replace("]", "")
+            
+            // 处理国家代码统一化：+86、86、0086 都转换为 86
+            if (stripped.startsWith("+")) {
+                stripped = stripped.substring(1)
+            } else if (stripped.startsWith("00")) {
+                stripped = stripped.substring(2)
+            }
+            
+            // 过滤保留数字
+            val result = stripped.filter { it.isDigit() }.takeIf { it.isNotBlank() }
+                ?: return null
+            
+            // 验证号码长度（中国号码至少10位，国际格式至少6位）
+            return result.takeIf { it.length >= 6 }
         }
 
         @Suppress("DEPRECATION")
         fun numbersMatch(first: String, second: String): Boolean {
+            // 完全相等
             if (first == second) return true
-            return PhoneNumberUtils.compare(first, second) ||
-                first.takeLast(11) == second.takeLast(11) ||
-                first.takeLast(8) == second.takeLast(8)
+            
+            // 使用系统 API 进行智能匹配
+            if (PhoneNumberUtils.compare(first, second)) return true
+            
+            // 后11位匹配（中国号码完整长度）
+            if (first.length >= 11 && second.length >= 11) {
+                if (first.takeLast(11) == second.takeLast(11)) return true
+            }
+            
+            // 后10位匹配（中国号码不含0的完整长度）
+            if (first.length >= 10 && second.length >= 10) {
+                if (first.takeLast(10) == second.takeLast(10)) return true
+            }
+            
+            return false
         }
     }
 }
